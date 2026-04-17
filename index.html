@@ -7,7 +7,11 @@
   <meta name="description" content="Трекер расходов в путешествии с картой маршрута и расчётом расхода топлива" />
   <meta name="theme-color" content="#1a1a2e" />
   <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="TravelCar" />
+  <link rel="apple-touch-icon" id="apple-touch-icon" href="" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -452,6 +456,17 @@
   <!-- ═══════════════════════════════════════ ADD PAGE ═══ -->
   <div class="page active" id="page-add">
 
+    <!-- BIG VOICE BUTTON — TOP -->
+    <div class="voice-section">
+      <button class="big-mic-btn" id="mic-btn" onclick="toggleMic()">
+        <span class="mic-icon">🎤</span>
+        <span class="mic-label" id="mic-label">Голосовой ввод</span>
+      </button>
+      <div class="voice-hint">Скажи: <em>«заправка 50 евро»</em> или <em>«пицца 100 злотых»</em></div>
+      <div class="voice-transcript" id="voice-transcript"></div>
+      <div class="voice-status" id="voice-status"></div>
+    </div>
+
     <!-- Category -->
     <div class="add-section">
       <div class="section-title">Категория</div>
@@ -504,19 +519,6 @@
 
       <!-- Save -->
       <button class="save-btn" onclick="saveEntry()">💾 Сохранить</button>
-    </div>
-
-    <!-- BIG VOICE BUTTON -->
-    <div class="voice-section">
-      <div class="voice-hint" id="voice-hint">
-        Скажи: <em>«заправка 50 евро»</em> или <em>«пицца 100 злотых»</em>
-      </div>
-      <button class="big-mic-btn" id="mic-btn" onclick="toggleMic()">
-        <span class="mic-icon">🎤</span>
-        <span class="mic-label" id="mic-label">Голосовой ввод</span>
-      </button>
-      <div class="voice-transcript" id="voice-transcript"></div>
-      <div class="voice-status" id="voice-status"></div>
     </div>
 
     <!-- Fuel stats mini bar -->
@@ -875,58 +877,81 @@ function deleteEntry(id) {
    FUEL CALCULATIONS
 ═══════════════════════════════════════════════════════════ */
 function calcFuelStats(entries) {
-  const fuelEntries = entries.filter(e => e.cat === 'fuel').sort((a,b) => new Date(a.date)-new Date(b.date));
-  const totalSpent = fuelEntries.reduce((s,e) => s + e.amount, 0);
+  const fuelEntries = entries.filter(e => e.cat === 'fuel').sort((a,b) => new Date(a.date) - new Date(b.date));
+  const totalSpent = fuelEntries.reduce((s, e) => s + e.amount, 0);
   const currency = fuelEntries.length ? fuelEntries[0].currency : state.settings.defaultCurrency;
   const sym = CURRENCY_SYMBOLS[currency] || currency;
 
-  // distance from odometer readings in fuel entries
-  const withOdo = fuelEntries.filter(e => e.odo);
+  // Расстояние: берём ОДО из записей топлива (отсортированы по дате)
+  const withOdo = fuelEntries.filter(e => e.odo && e.odo > 0);
   let distance = 0;
   if (withOdo.length >= 2) {
-    const minOdo = Math.min(...withOdo.map(e=>e.odo));
-    const maxOdo = Math.max(...withOdo.map(e=>e.odo));
-    distance = maxOdo - minOdo;
+    const first = withOdo[0].odo;
+    const last  = withOdo[withOdo.length - 1].odo;
+    distance = last - first;
   }
 
-  // fallback: use trip odoStart/odoEnd
+  // Fallback: odo start/end из настроек поездки
   const trip = currentTrip();
-  if (distance === 0 && trip.odoStart != null && trip.odoEnd != null) {
+  if (distance <= 0 && trip.odoStart != null && trip.odoEnd != null && trip.odoEnd > trip.odoStart) {
     distance = trip.odoEnd - trip.odoStart;
   }
 
-  // l/100km calculation (need price per liter)
+  // Средняя цена за литр (из настроек или из записей если есть объём)
+  const ppl = parseFloat(state.settings.pricePerLiter) || null;
+
+  // Литры и л/100км
   let liters = null;
-  if (state.settings.pricePerLiter && state.settings.pricePerLiter > 0) {
-    liters = totalSpent / state.settings.pricePerLiter;
+  let l100   = null;
+  if (ppl && ppl > 0 && totalSpent > 0) {
+    liters = totalSpent / ppl;
+    if (distance > 0) l100 = (liters / distance) * 100;
   }
 
-  const l100 = (liters && distance > 0) ? (liters / distance * 100) : null;
-  const ppk  = (totalSpent && distance > 0) ? (totalSpent / distance) : null;
+  // Стоимость на км
+  const ppk = (totalSpent > 0 && distance > 0) ? (totalSpent / distance) : null;
 
-  return { count: fuelEntries.length, totalSpent, distance, liters, l100, ppk, sym, currency };
+  // Средняя цена за заправку
+  const avgFill = fuelEntries.length > 0 ? (totalSpent / fuelEntries.length) : null;
+
+  return { count: fuelEntries.length, totalSpent, distance, liters, l100, ppk, ppl, avgFill, sym, currency };
 }
 
 function updateFuelStats() {
   const entries = currentTrip()?.entries || [];
   const fs = calcFuelStats(entries);
+  const fmt = (v, dec=1) => (v != null && isFinite(v)) ? v.toFixed(dec) : '–';
 
-  const fmt = (v, dec=1) => v != null ? v.toFixed(dec) : '–';
+  // ── мини-бар на главном экране ──
+  document.getElementById('fstat-total').textContent = fs.count || '–';
+  document.getElementById('fstat-dist').textContent  = fs.distance > 0 ? fs.distance.toFixed(0) + ' км' : '–';
+  document.getElementById('fstat-l100').textContent  = fs.l100 ? fmt(fs.l100) + ' л' : (fs.ppk ? fs.sym + fs.ppk.toFixed(2) + '/км' : '–');
+  document.getElementById('fstat-spent').textContent = fs.count ? `${fs.sym}${fs.totalSpent.toFixed(0)}` : '–';
 
-  // mini bar
-  document.getElementById('fstat-total').textContent  = fs.count || '–';
-  document.getElementById('fstat-dist').textContent   = fs.distance > 0 ? fs.distance.toFixed(0) : '–';
-  document.getElementById('fstat-l100').textContent   = fs.l100 ? fmt(fs.l100) : '–';
-  document.getElementById('fstat-spent').textContent  = fs.count ? `${fs.sym}${fs.totalSpent.toFixed(0)}` : '–';
+  // ── страница статистики ──
+  document.getElementById('fc-count').textContent = fs.count || '–';
+  document.getElementById('fc-spent').textContent = fs.count ? `${fs.sym}${fs.totalSpent.toFixed(2)}` : '–';
+  document.getElementById('fc-dist').textContent  = fs.distance > 0 ? `${fs.distance.toFixed(0)} км` : '–';
 
-  // stats page
-  document.getElementById('fc-count').textContent  = fs.count || '–';
-  document.getElementById('fc-spent').textContent  = fs.count ? `${fs.sym}${fs.totalSpent.toFixed(2)}` : '–';
-  document.getElementById('fc-dist').textContent   = fs.distance > 0 ? `${fs.distance.toFixed(0)} км` : '–';
-  document.getElementById('fc-l100').textContent   = fs.l100 ? `${fmt(fs.l100)} л` : '–';
-  document.getElementById('fc-ppk').textContent    = fs.ppk  ? `${fs.sym}${fs.ppk.toFixed(3)}` : '–';
-  const ppl = (state.settings.pricePerLiter) ? `${fs.sym}${state.settings.pricePerLiter}` : '–';
-  document.getElementById('fc-ppl').textContent    = ppl;
+  // л/100км — если нет цены за литр, предлагаем ввести её
+  if (fs.l100) {
+    document.getElementById('fc-l100').textContent = `${fmt(fs.l100)} л/100км`;
+  } else if (!fs.ppl) {
+    document.getElementById('fc-l100').textContent = 'укажи ₽/л в настр.';
+  } else {
+    document.getElementById('fc-l100').textContent = fs.distance > 0 ? '–' : 'нужен одометр';
+  }
+
+  document.getElementById('fc-ppk').textContent = fs.ppk ? `${fs.sym}${fs.ppk.toFixed(3)}/км` : (fs.distance <= 0 ? 'нужен одометр' : '–');
+
+  // средняя цена за литр
+  if (fs.ppl) {
+    document.getElementById('fc-ppl').textContent = `${fs.sym}${fs.ppl.toFixed(2)}`;
+  } else if (fs.avgFill) {
+    document.getElementById('fc-ppl').textContent = `≈${fs.sym}${fs.avgFill.toFixed(0)}/заправка`;
+  } else {
+    document.getElementById('fc-ppl').textContent = '–';
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1226,12 +1251,13 @@ async function fetchRates(base) {
 
 async function convertToBase(amount, fromCur) {
   const baseCur = state.settings.defaultCurrency;
-  if (fromCur === baseCur) return { amount, rate: 1 };
+  if (fromCur === baseCur) return { amount, rate: 1, success: true };
   const rates = await fetchRates(baseCur);
-  if (!rates || !rates[fromCur]) return { amount, rate: 1 };
-  // rates[fromCur] = сколько fromCur за 1 baseCur
+  // rates[fromCur] = сколько fromCur стоит 1 baseCur
+  // напр. base=EUR, rates.PLN=4.25 => 1 EUR = 4.25 PLN => 100 PLN = 100/4.25 EUR
+  if (!rates || !rates[fromCur]) return { amount, rate: null, success: false };
   const rate = 1 / rates[fromCur];
-  return { amount: +(amount * rate).toFixed(2), rate: +rate.toFixed(4) };
+  return { amount: +(amount * rate).toFixed(2), rate: +rate.toFixed(4), success: true };
 }
 
 // ── Словарь ключевых слов ──
@@ -1357,7 +1383,7 @@ function toggleMic() {
   };
 
   recognition.onresult = async (e) => {
-    // Show interim
+    // Показываем промежуточный текст
     let interim = '';
     let finalText = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -1368,9 +1394,9 @@ function toggleMic() {
     transcriptEl.textContent = display;
     transcriptEl.className = 'voice-transcript has-text';
 
-    if (!finalText) return; // still interim
+    if (!finalText) return; // ещё не финальный результат
 
-    // Parse
+    // Парсим команду
     const parsed = parseVoiceCommand(finalText);
     setVoiceStatus('⏳ Обработка…', '');
 
@@ -1379,40 +1405,50 @@ function toggleMic() {
       return;
     }
 
-    // Convert currency if needed
     const baseCur = state.settings.defaultCurrency;
-    let convertedAmount = parsed.amount;
-    let convertedNote = parsed.note;
-    let rateInfo = '';
-    if (parsed.currency !== baseCur) {
+    const originalAmount = parsed.amount;
+    const originalCur = parsed.currency;
+
+    // Конвертация валюты
+    let finalAmount = originalAmount;
+    let finalCurrency = originalCur;  // по умолчанию сохраняем в оригинальной
+    let rateStr = '';
+
+    if (originalCur !== baseCur) {
       setVoiceStatus('🔄 Конвертирую валюту…', '');
-      const conv = await convertToBase(parsed.amount, parsed.currency);
-      convertedAmount = conv.amount;
-      rateInfo = ` (${parsed.amount} ${parsed.currency} × ${conv.rate})`;
+      const conv = await convertToBase(originalAmount, originalCur);
+      if (conv.success) {
+        finalAmount = conv.amount;
+        finalCurrency = baseCur;
+        rateStr = ` [${originalAmount} ${originalCur} → ${conv.amount} ${baseCur}]`;
+      } else {
+        // Нет сети — сохраняем в оригинальной валюте
+        finalAmount = originalAmount;
+        finalCurrency = originalCur;
+        rateStr = '';
+        setVoiceStatus('⚠️ Нет сети — сохранено в ' + originalCur, 'err');
+      }
     }
 
-    // Build pending entry
-    pendingVoiceEntry = {
-      amount: convertedAmount,
-      originalAmount: parsed.amount,
-      originalCurrency: parsed.currency,
-      currency: baseCur,
-      cat: parsed.cat,
-      note: parsed.note,
-      rateInfo,
-      rawText: finalText,
-    };
+    // Заметка + инфо о конвертации
+    const noteWithRate = parsed.note + rateStr;
 
-    // Prefill form fields too
+    // Записываем entry напрямую (без формы) — автосохранение
     selectCat(parsed.cat);
-    document.getElementById('amount-input').value = convertedAmount;
-    document.getElementById('currency-select').value = baseCur;
-    document.getElementById('note-input').value = parsed.note;
-    onCurrencyChange(baseCur);
+    document.getElementById('amount-input').value = finalAmount;
+    document.getElementById('currency-select').value = finalCurrency;
+    document.getElementById('note-input').value = noteWithRate.trim();
+    onCurrencyChange(finalCurrency);
 
-    // Show confirmation
-    showVoiceConfirm(pendingVoiceEntry);
-    setVoiceStatus('', '');
+    // Сохраняем через saveEntry (с геолокацией)
+    saveEntry();
+
+    setVoiceStatus('✅ Сохранено: ' + (CURRENCY_SYMBOLS[finalCurrency]||finalCurrency) + finalAmount.toFixed(2) + ' ' + (CAT_META[parsed.cat]?.icon||''), 'ok');
+    setTimeout(() => {
+      setVoiceStatus('', '');
+      transcriptEl.textContent = '';
+      transcriptEl.className = 'voice-transcript';
+    }, 3000);
   };
 
   recognition.onerror = (e) => {
@@ -1530,9 +1566,66 @@ function downloadBlob(blob, filename) {
 /* ═══════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════ */
+// ── Генерируем иконку для PWA через canvas ──
+function generateIconDataURL(size) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  // фон
+  const grad = ctx.createLinearGradient(0, 0, size, size);
+  grad.addColorStop(0, '#1a1a2e');
+  grad.addColorStop(1, '#16213e');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.roundRect(0, 0, size, size, size * 0.22);
+  ctx.fill();
+  // машинка + акцент
+  const accent = '#6c63ff';
+  ctx.fillStyle = accent;
+  ctx.beginPath();
+  ctx.roundRect(size*0.1, size*0.1, size*0.8, size*0.8, size*0.15);
+  ctx.fill();
+  // текст
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${size*0.45}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🚗', size/2, size/2);
+  return canvas.toDataURL('image/png');
+}
+
+function patchManifestWithIcons() {
+  try {
+    const icon192 = generateIconDataURL(192);
+    const icon512 = generateIconDataURL(512);
+    // apple-touch-icon
+    const appleLink = document.getElementById('apple-touch-icon');
+    if (appleLink) appleLink.href = icon192;
+    // patch manifest via blob
+    const manifestData = {
+      name: "TravelCar",
+      short_name: "TravelCar",
+      description: "Трекер расходов в путешествии",
+      start_url: window.location.pathname.replace(/\/[^\/]*$/, '/'),
+      display: "standalone",
+      background_color: "#0d0d1a",
+      theme_color: "#1a1a2e",
+      orientation: "portrait",
+      icons: [
+        { src: icon192, sizes: "192x192", type: "image/png", purpose: "any maskable" },
+        { src: icon512, sizes: "512x512", type: "image/png", purpose: "any maskable" }
+      ]
+    };
+    const blob = new Blob([JSON.stringify(manifestData)], { type: 'application/manifest+json' });
+    const url  = URL.createObjectURL(blob);
+    const link = document.querySelector('link[rel="manifest"]');
+    if (link) link.href = url;
+  } catch(e) { console.warn('manifest patch failed', e); }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  patchManifestWithIcons();
   loadState();
-  // set default currency
   const defCur = state.settings.defaultCurrency;
   document.getElementById('currency-select').value = defCur;
   onCurrencyChange(defCur);
