@@ -320,6 +320,81 @@
     .marker-pin { width: 28px; height: 28px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; border: 2px solid rgba(255,255,255,.2); box-shadow: 0 3px 10px rgba(0,0,0,.4); }
     .marker-pin span { transform: rotate(45deg); font-size: 12px; }
 
+
+    /* ── BIG VOICE BUTTON ── */
+    .voice-section {
+      flex-shrink: 0; padding: 0 16px 12px;
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+    .voice-hint {
+      font-size: .75rem; color: var(--muted); text-align: center; line-height: 1.5;
+    }
+    .voice-hint em { color: var(--text); font-style: normal; background: var(--surface2); padding: 1px 5px; border-radius: 4px; }
+
+    .big-mic-btn {
+      width: 100%; max-width: 340px; padding: 16px 20px;
+      background: linear-gradient(135deg, var(--surface2), rgba(108,99,255,.15));
+      border: 1.5px solid var(--border); border-radius: 18px;
+      color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+      font-family: var(--font-body); font-size: .95rem; font-weight: 500;
+      transition: all .25s; box-shadow: 0 4px 20px rgba(0,0,0,.3);
+      position: relative; overflow: hidden;
+    }
+    .big-mic-btn::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(circle at 50% 50%, rgba(108,99,255,.0) 0%, transparent 70%);
+      transition: background .3s;
+    }
+    .big-mic-btn:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: 0 6px 28px rgba(108,99,255,.25); }
+    .big-mic-btn .mic-icon { font-size: 1.5rem; transition: transform .2s; }
+    .big-mic-btn.listening {
+      border-color: var(--accent2); background: linear-gradient(135deg, rgba(255,101,132,.15), rgba(108,99,255,.1));
+      box-shadow: 0 0 0 3px rgba(255,101,132,.2), 0 6px 28px rgba(255,101,132,.2);
+      animation: mic-pulse 1.2s ease-in-out infinite;
+    }
+    .big-mic-btn.listening .mic-icon { animation: mic-bounce 0.6s ease-in-out infinite alternate; }
+    @keyframes mic-pulse { 0%,100%{box-shadow:0 0 0 3px rgba(255,101,132,.2),0 6px 28px rgba(255,101,132,.2)} 50%{box-shadow:0 0 0 8px rgba(255,101,132,.08),0 6px 28px rgba(255,101,132,.35)} }
+    @keyframes mic-bounce { from{transform:scale(1)} to{transform:scale(1.2)} }
+    .big-mic-btn.confirming {
+      border-color: var(--green); background: linear-gradient(135deg, rgba(0,212,170,.15), rgba(108,99,255,.1));
+      animation: none;
+    }
+
+    .voice-transcript {
+      font-size: .82rem; color: var(--text); text-align: center; min-height: 18px;
+      background: var(--surface2); border-radius: 10px; padding: 0;
+      transition: all .25s; max-width: 340px; width: 100%;
+    }
+    .voice-transcript.has-text { padding: 8px 14px; border: 1px solid var(--border); }
+
+    .voice-status {
+      font-size: .72rem; color: var(--muted); text-align: center; min-height: 16px;
+    }
+    .voice-status.ok { color: var(--green); }
+    .voice-status.err { color: var(--accent2); }
+
+    /* confirmation overlay */
+    .voice-confirm {
+      position: fixed; inset: 0; z-index: 900;
+      background: rgba(0,0,0,.75); display: flex; align-items: flex-end; justify-content: center;
+      padding: 0; animation: fadeIn .2s;
+    }
+    .voice-confirm.hidden { display: none; }
+    .voice-confirm-box {
+      background: var(--surface); border-radius: 20px 20px 0 0; width: 100%; max-width: 500px;
+      padding: 20px; animation: slideUp .25s ease;
+    }
+    .vc-title { font-family: var(--font-head); font-size: 1rem; font-weight: 700; margin-bottom: 14px; }
+    .vc-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: .88rem; }
+    .vc-row:last-of-type { border-bottom: none; }
+    .vc-key { color: var(--muted); }
+    .vc-val { font-weight: 600; }
+    .vc-btns { display: flex; gap: 10px; margin-top: 16px; }
+    .vc-save { flex: 2; padding: 13px; background: var(--green); border: none; color: #000; border-radius: var(--card-r); font-family: var(--font-head); font-size: .95rem; font-weight: 700; cursor: pointer; transition: opacity .2s; }
+    .vc-save:hover { opacity: .88; }
+    .vc-edit { flex: 1; padding: 13px; background: none; border: 1px solid var(--border); color: var(--text); border-radius: var(--card-r); font-family: var(--font-body); font-size: .85rem; cursor: pointer; transition: border-color .2s; }
+    .vc-edit:hover { border-color: var(--accent); }
+
     /* safe area */
     @supports (padding-bottom: env(safe-area-inset-bottom)) {
       nav.tabs { padding-bottom: env(safe-area-inset-bottom); }
@@ -422,14 +497,26 @@
         <span style="color:var(--muted);font-size:.8rem;align-self:center">км</span>
       </div>
 
-      <!-- Note + mic -->
+      <!-- Note -->
       <div class="note-row">
         <input type="text" id="note-input" placeholder="Заметка (необязательно)" />
-        <button class="mic-btn" id="mic-btn" onclick="toggleMic()" title="Голосовой ввод">🎤</button>
       </div>
 
       <!-- Save -->
       <button class="save-btn" onclick="saveEntry()">💾 Сохранить</button>
+    </div>
+
+    <!-- BIG VOICE BUTTON -->
+    <div class="voice-section">
+      <div class="voice-hint" id="voice-hint">
+        Скажи: <em>«заправка 50 евро»</em> или <em>«пицца 100 злотых»</em>
+      </div>
+      <button class="big-mic-btn" id="mic-btn" onclick="toggleMic()">
+        <span class="mic-icon">🎤</span>
+        <span class="mic-label" id="mic-label">Голосовой ввод</span>
+      </button>
+      <div class="voice-transcript" id="voice-transcript"></div>
+      <div class="voice-status" id="voice-status"></div>
     </div>
 
     <!-- Fuel stats mini bar -->
@@ -586,6 +673,21 @@
   </div>
 
 </div><!-- /app -->
+
+<!-- VOICE CONFIRM MODAL -->
+<div class="voice-confirm hidden" id="voice-confirm">
+  <div class="voice-confirm-box">
+    <div class="modal-handle"></div>
+    <div class="vc-title">🎤 Подтвердить запись?</div>
+    <div id="vc-details"></div>
+    <div class="vc-btns">
+      <button class="vc-save" onclick="confirmVoiceEntry()">✅ Сохранить</button>
+      <button class="vc-edit" onclick="cancelVoiceEntry()">✏️ Изменить</button>
+    </div>
+  </div>
+</div>
+
+
 
 <!-- TOAST -->
 <div id="toast"></div>
@@ -1102,34 +1204,265 @@ function closeDetailModal(e) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   VOICE INPUT
+   VOICE INPUT  — полноценный парсер с автосохранением
+   ░ Понимает: категорию, сумму, валюту, заметку
+   ░ Конвертирует в валюту по умолчанию через exchangerate-api
+   ░ Показывает карточку подтверждения перед сохранением
 ═══════════════════════════════════════════════════════════ */
+
+// ── Курсы обмена (кэш) ──
+let ratesCache = {};   // { EUR: { PLN: 4.25, USD: 1.08, ... }, ts: epoch }
+
+async function fetchRates(base) {
+  const now = Date.now();
+  if (ratesCache[base] && (now - ratesCache[base].ts) < 3600000) return ratesCache[base].rates;
+  try {
+    const r = await fetch(`https://api.exchangerate-api.com/v4/latest/${base}`);
+    const d = await r.json();
+    ratesCache[base] = { rates: d.rates, ts: now };
+    return d.rates;
+  } catch { return null; }
+}
+
+async function convertToBase(amount, fromCur) {
+  const baseCur = state.settings.defaultCurrency;
+  if (fromCur === baseCur) return { amount, rate: 1 };
+  const rates = await fetchRates(baseCur);
+  if (!rates || !rates[fromCur]) return { amount, rate: 1 };
+  // rates[fromCur] = сколько fromCur за 1 baseCur
+  const rate = 1 / rates[fromCur];
+  return { amount: +(amount * rate).toFixed(2), rate: +rate.toFixed(4) };
+}
+
+// ── Словарь ключевых слов ──
+const VOICE_CATS = [
+  { cat:'fuel',      words:['заправк','топлив','бензин','дизел','газ','солярк','горючее','литр','лит '] },
+  { cat:'food',      words:['еда','пицц','ресторан','кафе','обед','ужин','завтрак','перекус','еd','фаст','стол','кофе','мак','буфет','столов','таверн','харч'] },
+  { cat:'accom',     words:['отель','хостел','жильё','жилье','номер','апартамент','аирбнб','airbnb','ночлег','кемпинг','палат'] },
+  { cat:'transport', words:['такси','убер','uber','автобус','поезд','метро','трамвай','паром','билет','платн','дорог','парковк','проезд'] },
+  { cat:'shopping',  words:['магазин','покупк','супермаркет','рынок','базар','торгов','маркет','лавк'] },
+  { cat:'other',     words:['прочее','другое','разное','прочее'] },
+];
+
+const VOICE_CURRENCIES = [
+  { cur:'EUR', words:['евро','eur','€'] },
+  { cur:'USD', words:['доллар','usd','$','бакс'] },
+  { cur:'GBP', words:['фунт','gbp','£','стерлинг'] },
+  { cur:'PLN', words:['злот','pln','zł','польск'] },
+  { cur:'CZK', words:['крон','czk','kč','чешск'] },
+  { cur:'HUF', words:['форинт','huf','ft','венгер'] },
+  { cur:'TRY', words:['лира','try','₺','турецк'] },
+  { cur:'GEL', words:['лари','gel','₾','груз'] },
+  { cur:'UAH', words:['гривн','uah','₴','украинск'] },
+  { cur:'CHF', words:['франк','chf','швейц'] },
+  { cur:'RON', words:['лей','ron','lei','румын'] },
+];
+
+// ── Числа прописью (ru) ──
+const NUM_WORDS = {
+  'ноль':0,'нуль':0,'один':1,'одна':1,'два':2,'две':2,'три':3,'четыре':4,
+  'пять':5,'шесть':6,'семь':7,'восемь':8,'девять':9,'десять':10,
+  'одиннадцать':11,'двенадцать':12,'тринадцать':13,'четырнадцать':14,
+  'пятнадцать':15,'шестнадцать':16,'семнадцать':17,'восемнадцать':18,'девятнадцать':19,
+  'двадцать':20,'тридцать':30,'сорок':40,'пятьдесят':50,
+  'шестьдесят':60,'семьдесят':70,'восемьдесят':80,'девяносто':90,
+  'сто':100,'двести':200,'триста':300,'четыреста':400,'пятьсот':500,
+  'шестьсот':600,'семьсот':700,'восемьсот':800,'девятьсот':900,
+  'тысяча':1000,'тысячи':1000,'тысяч':1000,
+};
+
+function parseSpokenNumber(text) {
+  // цифры напрямую
+  const digitMatch = text.match(/(\d+(?:[.,]\d+)?)/);
+  if (digitMatch) return parseFloat(digitMatch[1].replace(',', '.'));
+  // прописью
+  const words = text.split(/\s+/);
+  let total = 0, current = 0;
+  for (const w of words) {
+    const v = NUM_WORDS[w];
+    if (v === undefined) continue;
+    if (v >= 1000) { total += (current || 1) * v; current = 0; }
+    else current += v;
+  }
+  return total + current || null;
+}
+
+function parseVoiceCommand(rawText) {
+  const text = rawText.toLowerCase().trim();
+  let amount = null, currency = null, cat = null, note = null;
+
+  // 1. Сумма
+  amount = parseSpokenNumber(text);
+
+  // 2. Валюта
+  for (const { cur, words } of VOICE_CURRENCIES) {
+    if (words.some(w => text.includes(w))) { currency = cur; break; }
+  }
+  if (!currency) currency = state.settings.defaultCurrency;
+
+  // 3. Категория
+  for (const { cat: c, words } of VOICE_CATS) {
+    if (words.some(w => text.includes(w))) { cat = c; break; }
+  }
+  if (!cat) cat = 'other';
+
+  // 4. Заметка — убираем числа, валюту, категорию-слова → остаток
+  let noteText = text;
+  noteText = noteText.replace(/\d+(?:[.,]\d+)?/g, '');
+  for (const { words } of VOICE_CURRENCIES) words.forEach(w => { noteText = noteText.replace(new RegExp(w,'g'), ''); });
+  for (const { words } of VOICE_CATS) words.forEach(w => { noteText = noteText.replace(new RegExp(w,'g'), ''); });
+  for (const [w] of Object.entries(NUM_WORDS)) noteText = noteText.replace(new RegExp('\\b'+w+'\\b','g'), '');
+  note = noteText.replace(/\s+/g, ' ').trim().replace(/^[,.\-\s]+|[,.\-\s]+$/g, '');
+
+  return { amount, currency, cat, note: note || '' };
+}
+
+// ── pending voice entry ──
+let pendingVoiceEntry = null;
+
 function toggleMic() {
   if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-    toast('❌ Голосовой ввод не поддерживается'); return;
+    setVoiceStatus('❌ Голосовой ввод не поддерживается (нужен Chrome)', 'err'); return;
   }
-  if (listening) { recognition.stop(); return; }
+  if (listening) {
+    recognition.stop();
+    setVoiceStatus('', '');
+    return;
+  }
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SR();
   recognition.lang = 'ru-RU';
-  recognition.onstart = () => { listening = true; document.getElementById('mic-btn').classList.add('listening'); };
-  recognition.onend   = () => { listening = false; document.getElementById('mic-btn').classList.remove('listening'); };
-  recognition.onresult = e => {
-    const text = e.results[0][0].transcript.toLowerCase();
-    // parse: "тридцать пять евро еда" or "35.50 топливо"
-    const numMatch = text.match(/(\d+[\.,]?\d*)/);
-    if (numMatch) document.getElementById('amount-input').value = numMatch[1].replace(',','.');
-    const cats = { топливо:'fuel', заправка:'fuel', бензин:'fuel', еда:'food', ресторан:'food', кафе:'food', жильё:'accom', отель:'accom', хостел:'accom', транспорт:'transport', такси:'transport', покупк:'shopping', магазин:'shopping' };
-    for (const [kw, cat] of Object.entries(cats)) {
-      if (text.includes(kw)) { selectCat(cat); break; }
-    }
-    // rest as note
-    const note = text.replace(/\d+[\.,]?\d*/g,'').replace(/(евро|доллар|гривн|рубл|лари)/g,'').trim();
-    if (note) document.getElementById('note-input').value = note;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 3;
+
+  const btn = document.getElementById('mic-btn');
+  const labelEl = document.getElementById('mic-label');
+  const transcriptEl = document.getElementById('voice-transcript');
+
+  recognition.onstart = () => {
+    listening = true;
+    btn.classList.add('listening');
+    labelEl.textContent = 'Слушаю…';
+    transcriptEl.className = 'voice-transcript';
+    transcriptEl.textContent = '';
+    setVoiceStatus('🎙️ Говорите сейчас', '');
   };
-  recognition.onerror = () => toast('❌ Ошибка микрофона');
+
+  recognition.onend = () => {
+    listening = false;
+    btn.classList.remove('listening');
+    btn.classList.remove('confirming');
+    labelEl.textContent = 'Голосовой ввод';
+  };
+
+  recognition.onresult = async (e) => {
+    // Show interim
+    let interim = '';
+    let finalText = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    const display = finalText || interim;
+    transcriptEl.textContent = display;
+    transcriptEl.className = 'voice-transcript has-text';
+
+    if (!finalText) return; // still interim
+
+    // Parse
+    const parsed = parseVoiceCommand(finalText);
+    setVoiceStatus('⏳ Обработка…', '');
+
+    if (!parsed.amount) {
+      setVoiceStatus('❌ Сумма не распознана. Попробуйте ещё раз.', 'err');
+      return;
+    }
+
+    // Convert currency if needed
+    const baseCur = state.settings.defaultCurrency;
+    let convertedAmount = parsed.amount;
+    let convertedNote = parsed.note;
+    let rateInfo = '';
+    if (parsed.currency !== baseCur) {
+      setVoiceStatus('🔄 Конвертирую валюту…', '');
+      const conv = await convertToBase(parsed.amount, parsed.currency);
+      convertedAmount = conv.amount;
+      rateInfo = ` (${parsed.amount} ${parsed.currency} × ${conv.rate})`;
+    }
+
+    // Build pending entry
+    pendingVoiceEntry = {
+      amount: convertedAmount,
+      originalAmount: parsed.amount,
+      originalCurrency: parsed.currency,
+      currency: baseCur,
+      cat: parsed.cat,
+      note: parsed.note,
+      rateInfo,
+      rawText: finalText,
+    };
+
+    // Prefill form fields too
+    selectCat(parsed.cat);
+    document.getElementById('amount-input').value = convertedAmount;
+    document.getElementById('currency-select').value = baseCur;
+    document.getElementById('note-input').value = parsed.note;
+    onCurrencyChange(baseCur);
+
+    // Show confirmation
+    showVoiceConfirm(pendingVoiceEntry);
+    setVoiceStatus('', '');
+  };
+
+  recognition.onerror = (e) => {
+    const msgs = { 'no-speech':'Речь не обнаружена', 'not-allowed':'Нет доступа к микрофону', 'network':'Нет интернета' };
+    setVoiceStatus('❌ ' + (msgs[e.error] || 'Ошибка: ' + e.error), 'err');
+  };
+
   recognition.start();
+}
+
+function setVoiceStatus(msg, cls) {
+  const el = document.getElementById('voice-status');
+  el.textContent = msg;
+  el.className = 'voice-status' + (cls ? ' ' + cls : '');
+}
+
+function showVoiceConfirm(p) {
+  const m = CAT_META[p.cat] || CAT_META.other;
+  const sym = CURRENCY_SYMBOLS[p.currency] || p.currency;
+  const origLine = p.originalCurrency !== p.currency
+    ? `<div class="vc-row"><span class="vc-key">Оригинал</span><span class="vc-val">${p.originalAmount} ${p.originalCurrency}</span></div>`
+    : '';
+  const noteLine = p.note ? `<div class="vc-row"><span class="vc-key">Заметка</span><span class="vc-val">${p.note}</span></div>` : '';
+  document.getElementById('vc-details').innerHTML = `
+    <div class="vc-row"><span class="vc-key">Фраза</span><span class="vc-val" style="color:var(--muted);font-weight:400">«${p.rawText}»</span></div>
+    <div class="vc-row"><span class="vc-key">Категория</span><span class="vc-val">${m.icon} ${m.label}</span></div>
+    <div class="vc-row"><span class="vc-key">Сумма</span><span class="vc-val" style="color:${m.color};font-size:1.1rem">${sym}${p.amount.toFixed(2)}</span></div>
+    ${origLine}${noteLine}
+  `;
+  document.getElementById('voice-confirm').classList.remove('hidden');
+  document.getElementById('mic-btn').classList.add('confirming');
+}
+
+function confirmVoiceEntry() {
+  document.getElementById('voice-confirm').classList.add('hidden');
+  if (!pendingVoiceEntry) return;
+  // saveEntry() will read from the form fields (already prefilled)
+  saveEntry();
+  pendingVoiceEntry = null;
+  // clear transcript
+  const t = document.getElementById('voice-transcript');
+  t.textContent = ''; t.className = 'voice-transcript';
+  setVoiceStatus('✅ Запись сохранена!', 'ok');
+  setTimeout(() => setVoiceStatus('', ''), 2000);
+}
+
+function cancelVoiceEntry() {
+  document.getElementById('voice-confirm').classList.add('hidden');
+  document.getElementById('mic-btn').classList.remove('confirming');
+  setVoiceStatus('✏️ Отредактируйте и сохраните вручную', '');
 }
 
 /* ═══════════════════════════════════════════════════════════
